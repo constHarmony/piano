@@ -187,6 +187,14 @@
             font-size: 9px;
         }
 
+        /* Add user-select none to prevent highlighting */
+        .note-name, .note-freq {
+            user-select: none;
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE 10+ */
+        }
+
         .white-key .note-name, .white-key .note-freq {
             color: #333;
         }
@@ -336,6 +344,20 @@
             let audioContext = null;
             let masterGainNode = null;
             let activeOscillators = {}; // Store active oscillators
+            let isMouseDown = false; // Track mouse button state for dragging
+            let lastTouchedKey = null; // Track last key played during touch drag
+
+            // --- Setup Mouse Down/Up Tracking for Dragging ---
+            document.body.addEventListener('mousedown', () => {
+                isMouseDown = true;
+            });
+            document.body.addEventListener('mouseup', () => {
+                isMouseDown = false;
+            });
+             // Handle cases where mouse leaves the window while pressed
+            document.body.addEventListener('mouseleave', () => {
+                 isMouseDown = false;
+            });
 
             // Handle vibrato checkbox
             document.getElementById('vibrato').addEventListener('change', function() {
@@ -526,10 +548,29 @@
                     // Add event listeners for playing notes
                     keyInner.addEventListener('mousedown', () => handleKeyPress(keyInner, noteInfo.frequency));
                     keyInner.addEventListener('touchstart', (e) => {
-                       e.preventDefault(); // Prevent scrolling on key press
+                       // e.preventDefault(); // REMOVED: This was preventing horizontal scroll initiation
                        handleKeyPress(keyInner, noteInfo.frequency);
+                       lastTouchedKey = keyInner; // Set initial touched key
+                    });
+
+                    // Add mouseover listener for drag-play
+                    keyInner.addEventListener('mouseover', () => {
+                        if (isMouseDown) { // Only play if mouse button is held down
+                            handleKeyPress(keyInner, noteInfo.frequency);
+                        }
                     });
                  });
+
+                 // Add touchmove listener to the piano container AFTER keys are rendered
+                 const pianoContainer = document.getElementById('piano-keyboard');
+                 pianoContainer.removeEventListener('touchmove', handleTouchMove);
+                 pianoContainer.addEventListener('touchmove', handleTouchMove);
+
+                 // Clear last touched key when touch ends
+                 pianoContainer.removeEventListener('touchend', handleTouchEnd);
+                 pianoContainer.addEventListener('touchend', handleTouchEnd);
+                 pianoContainer.removeEventListener('touchcancel', handleTouchEnd);
+                 pianoContainer.addEventListener('touchcancel', handleTouchEnd);
 
                  // Adjust piano width based on number of white keys
                  const whiteKeyCount = notesToDisplay.filter(n => !n.isBlackKey).length;
@@ -804,6 +845,34 @@
 
                  }
              }
+
+             // --- TOUCH DRAG HANDLING ---
+             function handleTouchMove(e) {
+                // e.preventDefault(); // REMOVED: This was preventing horizontal scrolling
+                if (e.touches.length > 0) {
+                    const touch = e.touches[0];
+                    const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+
+                    if (elementUnderTouch) {
+                        // Find the actual key element (could be label or inner div)
+                        const keyInner = elementUnderTouch.closest('.white-key, .black-key');
+
+                        if (keyInner && keyInner !== lastTouchedKey) {
+                            const freq = parseFloat(keyInner.closest('.key').dataset.freq);
+                            if (freq && !isNaN(freq)) {
+                                handleKeyPress(keyInner, freq);
+                                lastTouchedKey = keyInner; // Update last touched key
+                            }
+                        }
+                    }
+                }
+             }
+
+             function handleTouchEnd(e) {
+                 lastTouchedKey = null; // Reset last touched key when touch ends
+             }
+
+             // --- END TOUCH DRAG HANDLING ---
 
         }); // End DOMContentLoaded
     </script>
