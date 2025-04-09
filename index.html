@@ -254,12 +254,7 @@
             /* Optional: add a subtle pattern or border */
             /* border-top: 1px solid #ccc; */
             /* border-bottom: 1px solid #ccc; */
-            cursor: grab;
             /* Width will be set dynamically by JS */
-        }
-
-        .drag-handle:active {
-            cursor: grabbing;
         }
 
         /* For touch devices */
@@ -299,16 +294,6 @@
         <h1>Interactive Piano Keyboard with Sound</h1>
 
         <div class="controls">
-            <div class="control-group">
-                <label for="start-octave">Start Octave:</label>
-                <select id="start-octave"></select>
-            </div>
-
-            <div class="control-group">
-                <label for="end-octave">End Octave:</label>
-                <select id="end-octave"></select>
-            </div>
-
             <div class="control-group">
                 <label for="sound-type">Sound Type:</label>
                 <select id="sound-type">
@@ -456,43 +441,14 @@
 
             const allNotes = generatePianoNotes();
 
-            // Find all unique octaves
-            const availableOctaves = [...new Set(allNotes.map(note =>
-                parseInt(note.note.replace(/[A-G#b/]+/, ''))
-            ))].sort((a, b) => a - b);
-
-            // Populate octave dropdowns
-            const startOctaveSelect = document.getElementById('start-octave');
-            const endOctaveSelect = document.getElementById('end-octave');
-
-            availableOctaves.forEach(octave => {
-                const startOption = document.createElement('option');
-                startOption.value = octave;
-                startOption.textContent = octave;
-                startOctaveSelect.appendChild(startOption);
-
-                const endOption = document.createElement('option');
-                endOption.value = octave;
-                endOption.textContent = octave;
-                endOctaveSelect.appendChild(endOption);
-            });
-
-            // Set default octave range (e.g., 2-5) or adjust as needed
-            startOctaveSelect.value = availableOctaves.includes(2) ? 2 : availableOctaves[0];
-            endOctaveSelect.value = availableOctaves.includes(5) ? 5 : availableOctaves[availableOctaves.length - 1];
-             // Ensure initial end octave >= start octave
-            if (parseInt(endOctaveSelect.value) < parseInt(startOctaveSelect.value)) {
-                 endOctaveSelect.value = startOctaveSelect.value;
-            }
-
-
-            // --- RENDER PIANO FUNCTION (Simplified - needs actual implementation) ---
+            // --- RENDER PIANO FUNCTION ---
             function renderPiano() {
                  const piano = document.getElementById('piano-keyboard');
                  piano.innerHTML = ''; // Clear existing keys
 
-                 const startOctave = parseInt(startOctaveSelect.value);
-                 const endOctave = parseInt(endOctaveSelect.value);
+                 // Hardcode octave range 0-10
+                 const startOctave = 0;
+                 const endOctave = 10;
 
                  // Filter notes based on selected octaves
                  const notesToDisplay = allNotes.filter(note => {
@@ -630,28 +586,7 @@
 
              // Initial Render
              renderPiano();
-             setupDragScrolling(); // Initialize drag handles after first render
 
-
-            // Handle octave range changes
-            function handleOctaveChange() {
-                const startOctave = parseInt(startOctaveSelect.value);
-                const endOctave = parseInt(endOctaveSelect.value);
-
-                // Ensure end octave is not less than start octave
-                if (endOctave < startOctave) {
-                    if (this === startOctaveSelect) {
-                        endOctaveSelect.value = startOctave;
-                    } else {
-                        startOctaveSelect.value = endOctave;
-                    }
-                }
-
-                renderPiano(); // Re-render the piano with the new octave range
-            }
-
-            startOctaveSelect.addEventListener('change', handleOctaveChange);
-            endOctaveSelect.addEventListener('change', handleOctaveChange);
 
             // Sound type change
             const soundTypeSelect = document.getElementById('sound-type');
@@ -908,86 +843,6 @@
              }
 
              // --- END TOUCH DRAG HANDLING ---
-
-             // --- DRAG HANDLE SCROLLING LOGIC ---
-             function setupDragScrolling() {
-                 const scrollContainer = document.getElementById('piano-scroll-container');
-                 const handles = [document.getElementById('drag-handle-top'), document.getElementById('drag-handle-bottom')];
-
-                 let isDragging = false;
-                 let startX;
-                 let scrollLeftStart;
-
-                 handles.forEach(handle => {
-                     if (!handle) return; // Skip if a handle wasn't found
-
-                     handle.addEventListener('mousedown', (e) => {
-                         isDragging = true;
-                         startX = e.pageX - handle.offsetLeft + scrollContainer.offsetLeft; // Adjust startX relative to the scroll container
-                         scrollLeftStart = scrollContainer.scrollLeft;
-                         handle.style.cursor = 'grabbing';
-                         scrollContainer.style.cursor = 'grabbing'; // Optional: change container cursor too
-                         // Prevent text selection during drag
-                         e.preventDefault();
-                     });
-
-                     handle.addEventListener('touchstart', (e) => {
-                          // Use only the first touch point
-                          const touch = e.touches[0];
-                          isDragging = true;
-                          startX = touch.pageX - handle.offsetLeft + scrollContainer.offsetLeft; // Adjust startX relative to the scroll container
-                          scrollLeftStart = scrollContainer.scrollLeft;
-                          handle.style.cursor = 'grabbing';
-                          scrollContainer.style.cursor = 'grabbing';
-                          // Prevent default touch behavior like scrolling page ONLY when dragging the handle
-                          e.preventDefault();
-                     }, { passive: false }); // Need passive: false to call preventDefault
-                 });
-
-                 const stopDragging = () => {
-                     if (!isDragging) return;
-                     isDragging = false;
-                     handles.forEach(handle => { if(handle) handle.style.cursor = 'grab'; });
-                     scrollContainer.style.cursor = 'default'; // Reset container cursor
-                 };
-
-                 document.addEventListener('mousemove', (e) => {
-                     if (!isDragging) return;
-                     e.preventDefault(); // Prevent unwanted actions during drag
-                     const x = e.pageX - scrollContainer.offsetLeft; // Mouse position relative to the scroll container
-                     const walk = (x - startX); // How far the mouse has moved
-                     scrollContainer.scrollLeft = scrollLeftStart - walk;
-                 });
-
-                 document.addEventListener('touchmove', (e) => {
-                      if (!isDragging) return;
-                      // Allow vertical scroll unless actively dragging handle horizontally
-                      // Check if horizontal movement is significant compared to vertical
-                      const touch = e.touches[0];
-                      const x = touch.pageX - scrollContainer.offsetLeft;
-                      const walk = (x - startX);
-
-                     // Simple check: if horizontal drag started, prioritize it.
-                     // More complex logic could check movement delta threshold.
-                      e.preventDefault(); // Prevent vertical scroll while dragging handle
-
-                      scrollContainer.scrollLeft = scrollLeftStart - walk;
-                 }, { passive: false }); // Need passive: false for preventDefault
-
-
-                 document.addEventListener('mouseup', stopDragging);
-                 document.addEventListener('touchend', stopDragging);
-                 document.addEventListener('mouseleave', (e) => {
-                      // Only stop dragging if mouse leaves the document area while dragging
-                      if (e.relatedTarget === null) {
-                           stopDragging();
-                      }
-                  });
-                  document.addEventListener('touchcancel', stopDragging);
-             }
-
-             // --- END DRAG HANDLE SCROLLING LOGIC ---
-
         }); // End DOMContentLoaded
     </script>
 </body>
