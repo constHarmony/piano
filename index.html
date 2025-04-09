@@ -566,19 +566,19 @@
                  if (topHandle) topHandle.style.width = pianoWidthStyle;
                  if (bottomHandle) bottomHandle.style.width = pianoWidthStyle;
 
-                 // Optional: Scroll to Middle C if visible
+                 // Scroll to Middle C (C4) if it exists
                  const middleCKey = piano.querySelector('.key[data-note="C4"]');
-                 if (middleCKey) {
-                     // Check if middle C is within the rendered range
-                     const middleCData = allNotes.find(n => n.note === "C4");
-                     if (middleCData) {
-                         const middleCOctave = parseInt(middleCData.note.replace(/[A-G#b/]+/, ''));
-                         if (middleCOctave >= startOctave && middleCOctave <= endOctave) {
-                             // Scroll into view logic (optional, can be complex)
-                             // middleCKey.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                             console.log("Middle C is within the current range.");
-                         }
-                     }
+                 const scrollContainer = document.getElementById('piano-scroll-container');
+                 if (middleCKey && scrollContainer) {
+                      // Calculate the horizontal center of the Middle C key relative to the piano
+                      const middleCKeyCenter = middleCKey.offsetLeft + middleCKey.offsetWidth / 2;
+                      // Calculate the center of the visible scroll container
+                      const containerCenter = scrollContainer.offsetWidth / 2;
+                      // Calculate the target scroll position
+                      const scrollTarget = middleCKeyCenter - containerCenter;
+
+                      // Apply the scroll position immediately (no animation)
+                      scrollContainer.scrollLeft = scrollTarget;
                  }
             }
              // --- END RENDER PIANO FUNCTION ---
