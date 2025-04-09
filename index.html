@@ -247,6 +247,21 @@
             min-width: 40px;
         }
 
+        /* New styles for drag handles */
+        .drag-handle {
+            height: 30px; /* Adjust height as needed */
+            background-color: #f0f0f0; /* Same as container scroll track */
+            /* Optional: add a subtle pattern or border */
+            /* border-top: 1px solid #ccc; */
+            /* border-bottom: 1px solid #ccc; */
+            cursor: grab;
+            /* Width will be set dynamically by JS */
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
         /* For touch devices */
         @media (max-width: 768px) {
             .piano {
@@ -323,8 +338,10 @@
             <button id="audio-toggle" class="audio-off">Audio Off</button>
         </div>
 
-        <div class="piano-container">
+        <div class="piano-container" id="piano-scroll-container">
+            <div class="drag-handle" id="drag-handle-top"></div>
             <div class="piano" id="piano-keyboard"></div>
+            <div class="drag-handle" id="drag-handle-bottom"></div>
         </div>
 
         <div class="info">
@@ -583,7 +600,15 @@
                  // Adjust piano width based on number of white keys
                  const whiteKeyCount = notesToDisplay.filter(n => !n.isBlackKey).length;
                  const approxPianoWidth = whiteKeyCount * 41; // 40px width + 1px margin
-                 piano.style.width = `${approxPianoWidth}px`;
+
+                 // Set width for piano AND drag handles
+                 const pianoWidthStyle = `${approxPianoWidth}px`;
+                 piano.style.width = pianoWidthStyle;
+
+                 const topHandle = document.getElementById('drag-handle-top');
+                 const bottomHandle = document.getElementById('drag-handle-bottom');
+                 if (topHandle) topHandle.style.width = pianoWidthStyle;
+                 if (bottomHandle) bottomHandle.style.width = pianoWidthStyle;
 
                  // Optional: Scroll to Middle C if visible
                  const middleCKey = piano.querySelector('.key[data-note="C4"]');
@@ -605,6 +630,7 @@
 
              // Initial Render
              renderPiano();
+             setupDragScrolling(); // Initialize drag handles after first render
 
 
             // Handle octave range changes
@@ -882,6 +908,85 @@
              }
 
              // --- END TOUCH DRAG HANDLING ---
+
+             // --- DRAG HANDLE SCROLLING LOGIC ---
+             function setupDragScrolling() {
+                 const scrollContainer = document.getElementById('piano-scroll-container');
+                 const handles = [document.getElementById('drag-handle-top'), document.getElementById('drag-handle-bottom')];
+
+                 let isDragging = false;
+                 let startX;
+                 let scrollLeftStart;
+
+                 handles.forEach(handle => {
+                     if (!handle) return; // Skip if a handle wasn't found
+
+                     handle.addEventListener('mousedown', (e) => {
+                         isDragging = true;
+                         startX = e.pageX - handle.offsetLeft + scrollContainer.offsetLeft; // Adjust startX relative to the scroll container
+                         scrollLeftStart = scrollContainer.scrollLeft;
+                         handle.style.cursor = 'grabbing';
+                         scrollContainer.style.cursor = 'grabbing'; // Optional: change container cursor too
+                         // Prevent text selection during drag
+                         e.preventDefault();
+                     });
+
+                     handle.addEventListener('touchstart', (e) => {
+                          // Use only the first touch point
+                          const touch = e.touches[0];
+                          isDragging = true;
+                          startX = touch.pageX - handle.offsetLeft + scrollContainer.offsetLeft; // Adjust startX relative to the scroll container
+                          scrollLeftStart = scrollContainer.scrollLeft;
+                          handle.style.cursor = 'grabbing';
+                          scrollContainer.style.cursor = 'grabbing';
+                          // Prevent default touch behavior like scrolling page ONLY when dragging the handle
+                          e.preventDefault();
+                     }, { passive: false }); // Need passive: false to call preventDefault
+                 });
+
+                 const stopDragging = () => {
+                     if (!isDragging) return;
+                     isDragging = false;
+                     handles.forEach(handle => { if(handle) handle.style.cursor = 'grab'; });
+                     scrollContainer.style.cursor = 'default'; // Reset container cursor
+                 };
+
+                 document.addEventListener('mousemove', (e) => {
+                     if (!isDragging) return;
+                     e.preventDefault(); // Prevent unwanted actions during drag
+                     const x = e.pageX - scrollContainer.offsetLeft; // Mouse position relative to the scroll container
+                     const walk = (x - startX); // How far the mouse has moved
+                     scrollContainer.scrollLeft = scrollLeftStart - walk;
+                 });
+
+                 document.addEventListener('touchmove', (e) => {
+                      if (!isDragging) return;
+                      // Allow vertical scroll unless actively dragging handle horizontally
+                      // Check if horizontal movement is significant compared to vertical
+                      const touch = e.touches[0];
+                      const x = touch.pageX - scrollContainer.offsetLeft;
+                      const walk = (x - startX);
+
+                     // Simple check: if horizontal drag started, prioritize it.
+                     // More complex logic could check movement delta threshold.
+                      e.preventDefault(); // Prevent vertical scroll while dragging handle
+
+                      scrollContainer.scrollLeft = scrollLeftStart - walk;
+                 }, { passive: false }); // Need passive: false for preventDefault
+
+
+                 document.addEventListener('mouseup', stopDragging);
+                 document.addEventListener('touchend', stopDragging);
+                 document.addEventListener('mouseleave', (e) => {
+                      // Only stop dragging if mouse leaves the document area while dragging
+                      if (e.relatedTarget === null) {
+                           stopDragging();
+                      }
+                  });
+                  document.addEventListener('touchcancel', stopDragging);
+             }
+
+             // --- END DRAG HANDLE SCROLLING LOGIC ---
 
         }); // End DOMContentLoaded
     </script>
