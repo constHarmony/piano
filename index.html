@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Piano Keyboard with Sound</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+        }
+
+        label {
+            margin-right: 8px;
+            font-weight: 600;
+        }
+
+        select, button {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background-color: white;
+        }
+
+        button {
+            cursor: pointer;
+            background-color: #4a6fff;
+            color: white;
+            border: none;
+            transition: background-color 0.2s;
+            padding: 10px 15px;
+        }
+
+        button:hover {
+            background-color: #3a5eff;
+        }
+
+        button.audio-off {
+            background-color: #999;
+        }
+
+        button.audio-on {
+            background-color: #4CAF50;
+        }
+
+        .piano-container {
+            overflow-x: scroll;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            max-width: 100%;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thick;
+            scrollbar-color: #888 #f0f0f0;
+        }
+
+        .piano-container::-webkit-scrollbar {
+            height: 24px;
+            width: 24px;
+            background: #f0f0f0;
+        }
+
+        .piano-container::-webkit-scrollbar-thumb {
+            background-color: #888;
+            border-radius: 8px;
+            border: 3px solid #f0f0f0;
+            min-width: 50px;
+        }
+
+        .piano-container::-webkit-scrollbar-track {
+            background-color: #f0f0f0;
+            border-radius: 8px;
+        }
+
+        .piano {
+            display: flex;
+            position: relative;
+            min-height: 200px;
+            margin: 0 auto;
+        }
+
+        .key {
+            position: relative;
+            margin-right: 1px;
+        }
+
+        .white-key {
+            width: 40px;
+            height: 200px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 0 0 4px 4px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding-bottom: 10px;
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        .black-key {
+            width: 28px;
+            height: 120px;
+            background-color: #333;
+            border-radius: 0 0 4px 4px;
+            position: absolute;
+            top: 0;
+            left: -14px;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding-bottom: 10px;
+            cursor: pointer;
+            overflow: visible;
+        }
+
+        .black-key-label-container {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 5;
+        }
+
+        .white-key:hover {
+            background-color: #f0f0f0;
+        }
+
+        .black-key:hover {
+            background-color: #555;
+        }
+
+        .white-key.active {
+            background-color: #e0e0e0;
+        }
+
+        .black-key.active {
+            background-color: #666;
+        }
+
+        .note-name {
+            font-weight: bold;
+            font-size: 10px;
+            margin-bottom: 2px;
+        }
+
+        .note-freq {
+            font-size: 9px;
+        }
+
+        /* Add user-select none to prevent highlighting */
+        .note-name, .note-freq {
+            user-select: none;
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE 10+ */
+        }
+
+        .white-key .note-name, .white-key .note-freq {
+            color: #333;
+        }
+
+        .black-key .note-name, .black-key .note-freq {
+            color: white;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 2px 4px;
+            border-radius: 2px;
+            text-align: center;
+            margin: 1px 0;
+            position: relative;
+            z-index: 10;
+        }
+
+        .info {
+            text-align: center;
+            margin-top: 20px;
+            color: #8B0000; /* Dark Red for warning */
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Middle C highlight */
+        .key[data-note="C4"] .white-key {
+            background-color: #e8f0ff;
+        }
+
+        .key[data-note="C4"] .white-key::after {
+            content: "Middle C";
+            position: absolute;
+            top: -20px;
+            font-size: 10px;
+            color: #4a6fff;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        input[type="range"] {
+            width: 100px;
+            cursor: pointer;
+        }
+
+        #sustain-value {
+            display: inline-block;
+            min-width: 40px;
+        }
+
+        /* For touch devices */
+        @media (max-width: 768px) {
+            .piano {
+                touch-action: pan-x;
+            }
+
+            .controls {
+                gap: 10px;
+            }
+
+            .control-group {
+                margin-bottom: 10px;
+            }
+
+            /* Make scrollbar more prominent on mobile */
+            .piano-container {
+                overflow-x: scroll;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .piano-container::-webkit-scrollbar {
+                height: 30px;
+            }
+
+            .piano-container::-webkit-scrollbar-thumb {
+                min-width: 80px;
+                min-height: 30px;
+                background-color: #666;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive Piano Keyboard with Sound</h1>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="start-octave">Start Octave:</label>
+                <select id="start-octave"></select>
+            </div>
+
+            <div class="control-group">
+                <label for="end-octave">End Octave:</label>
+                <select id="end-octave"></select>
+            </div>
+
+            <div class="control-group">
+                <label for="sound-type">Sound Type:</label>
+                <select id="sound-type">
+                    <option value="square">Square Wave</option>
+                    <option value="triangle">Triangle Wave</option>
+                    <option value="sine">Sine Wave</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="vibrato">Vibrato:</label>
+                <input type="checkbox" id="vibrato" checked />
+            </div>
+
+            <div class="control-group">
+                <label for="sustain">Sustain:</label>
+                <input type="range" id="sustain" min="0.5" max="5" step="0.5" value="1.5" />
+                <span id="sustain-value">1.5s</span>
+            </div>
+
+            <div class="control-group">
+                <label for="master-volume">Volume:</label>
+                <input type="range" id="master-volume" min="0" max="1" step="0.05" value="0.5" />
+                <span id="master-volume-value">50%</span>
+            </div>
+
+            <button id="audio-toggle" class="audio-off">Audio Off</button>
+        </div>
+
+        <div class="piano-container">
+            <div class="piano" id="piano-keyboard"></div>
+        </div>
+
+        <div class="info">
+             <p>⚠️ Warning: Please lower your volume before enabling audio, especially when using headphones.</p>
+        </div>
+    </div>
+
+    <script>
+        // Main piano keyboard functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Sound control variables
+            let soundType = 'square';
+            let vibratoEnabled = true; // Changed default to true
+            let sustainDuration = 1.5;
+
+            // Initialize audio context and master gain
+            let audioContext = null;
+            let masterGainNode = null;
+            let activeOscillators = {}; // Store active oscillators
+
+            // Handle vibrato checkbox
+            document.getElementById('vibrato').addEventListener('change', function() {
+                vibratoEnabled = this.checked;
+            });
+
+            // Handle sustain slider
+            const sustainSlider = document.getElementById('sustain');
+            const sustainValue = document.getElementById('sustain-value');
+
+            sustainSlider.addEventListener('input', function() {
+                sustainDuration = parseFloat(this.value);
+                sustainValue.textContent = sustainDuration + 's';
+            });
+
+            // Handle Master Volume Slider
+            const volumeSlider = document.getElementById('master-volume');
+            const volumeValue = document.getElementById('master-volume-value');
+
+            volumeSlider.addEventListener('input', function() {
+                const volume = parseFloat(this.value);
+                volumeValue.textContent = Math.round(volume * 100) + '%';
+                if (masterGainNode) {
+                    masterGainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+                }
+            });
+
+            // Define all notes with their octaves
+            const notesWithOctaves = ['A', 'A#/Bb', 'B', 'C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab'];
+
+            // Generate all piano notes with frequencies
+            function generatePianoNotes() {
+                const notes = [];
+                const A4 = 440; // Base frequency for A4
+
+                // Calculate for extended range (A0 to E10)
+                const totalKeys = 116; // Total keys from A0 to E10 (adjust if needed, original range might differ)
+
+                for (let i = 1; i <= totalKeys; i++) {
+                    const noteIndex = (i - 1) % 12;
+                    const octave = Math.floor((i + 8) / 12);
+
+                    // Calculate frequency: A4 = 440Hz (key number 49)
+                    const frequency = A4 * Math.pow(2, (i - 49) / 12);
+
+                    // Format note name (adjusted logic for octaves 0 and 1)
+                    let noteName;
+                    if (i <= 3) { // Handle A0, A#0, B0
+                       noteName = notesWithOctaves[noteIndex] + '0';
+                    } else { // Handle C1 onwards
+                       noteName = notesWithOctaves[(i - 4) % 12] + Math.floor((i + 8) / 12);
+                    }
+
+                    // Format frequency display value with appropriate precision
+                    let displayFreq;
+                    if (frequency < 100) displayFreq = frequency.toFixed(3);
+                    else if (frequency < 1000) displayFreq = frequency.toFixed(2);
+                    else if (frequency < 10000) displayFreq = frequency.toFixed(1);
+                    else displayFreq = frequency.toFixed(0);
+
+                    notes.push({
+                        keyNumber: i,
+                        note: noteName,
+                        frequency: frequency,
+                        displayFreq: displayFreq,
+                        isBlackKey: noteName.includes('#') || noteName.includes('b')
+                    });
+                }
+
+                // Ensure the first note is A0
+                if (notes.length > 0 && notes[0].note !== 'A0') {
+                    console.warn("Generated notes do not start exactly at A0 based on key numbering. Check calculation if precise range is critical.");
+                }
+
+                return notes;
+            }
+
+
+            const allNotes = generatePianoNotes();
+
+            // Find all unique octaves
+            const availableOctaves = [...new Set(allNotes.map(note =>
+                parseInt(note.note.replace(/[A-G#b/]+/, ''))
+            ))].sort((a, b) => a - b);
+
+            // Populate octave dropdowns
+            const startOctaveSelect = document.getElementById('start-octave');
+            const endOctaveSelect = document.getElementById('end-octave');
+
+            availableOctaves.forEach(octave => {
+                const startOption = document.createElement('option');
+                startOption.value = octave;
+                startOption.textContent = octave;
+                startOctaveSelect.appendChild(startOption);
+
+                const endOption = document.createElement('option');
+                endOption.value = octave;
+                endOption.textContent = octave;
+                endOctaveSelect.appendChild(endOption);
+            });
+
+            // Set default octave range (e.g., 2-5) or adjust as needed
+            startOctaveSelect.value = availableOctaves.includes(2) ? 2 : availableOctaves[0];
+            endOctaveSelect.value = availableOctaves.includes(5) ? 5 : availableOctaves[availableOctaves.length - 1];
+             // Ensure initial end octave >= start octave
+            if (parseInt(endOctaveSelect.value) < parseInt(startOctaveSelect.value)) {
+                 endOctaveSelect.value = startOctaveSelect.value;
+            }
+
+
+            // --- RENDER PIANO FUNCTION (Simplified - needs actual implementation) ---
+            function renderPiano() {
+                 const piano = document.getElementById('piano-keyboard');
+                 piano.innerHTML = ''; // Clear existing keys
+
+                 const startOctave = parseInt(startOctaveSelect.value);
+                 const endOctave = parseInt(endOctaveSelect.value);
+
+                 // Filter notes based on selected octaves
+                 const notesToDisplay = allNotes.filter(note => {
+                     const octave = parseInt(note.note.replace(/[A-G#b/]+/, ''));
+                     // Include notes from C in start octave up to B in end octave
+                     // Adjust logic slightly: start from the first note of the start octave (e.g., C2)
+                     // End with the last note of the end octave (e.g., B5)
+                     // A more precise filter would be needed if exact C-to-B range per octave is strict
+                     return octave >= startOctave && octave <= endOctave;
+
+                     // More precise logic attempt (start from C of start octave, end B of end octave):
+                     // if (octave === startOctave && note.note.startsWith('C')) return true; // Start from C
+                     // if (octave > startOctave && octave < endOctave) return true; // Include middle octaves
+                     // if (octave === endOctave && !note.note.startsWith('C')) return true; // Include up to B
+                     // return false;
+                 });
+
+
+                 // Determine the exact start and end notes for display (optional, for info)
+                 const startNoteInfo = notesToDisplay.length > 0 ? `${notesToDisplay[0].note} (${notesToDisplay[0].displayFreq} Hz)` : 'N/A';
+                 const endNoteInfo = notesToDisplay.length > 0 ? `${notesToDisplay[notesToDisplay.length - 1].note} (${notesToDisplay[notesToDisplay.length - 1].displayFreq} Hz)` : 'N/A';
+
+                 // console.log(`Rendering notes from ${startNoteInfo} to ${endNoteInfo}`); // Log instead of display
+
+
+                 // Create and append key elements (simplified)
+                 notesToDisplay.forEach(noteInfo => {
+                    const keyElement = document.createElement('div');
+                    keyElement.classList.add('key');
+                    keyElement.dataset.note = noteInfo.note;
+                    keyElement.dataset.freq = noteInfo.frequency;
+
+                    const keyInner = document.createElement('div');
+                    keyInner.classList.add(noteInfo.isBlackKey ? 'black-key' : 'white-key');
+
+                    // Labels
+                    const noteNameSpan = document.createElement('span');
+                    noteNameSpan.classList.add('note-name');
+                    noteNameSpan.textContent = noteInfo.note;
+
+                    const noteFreqSpan = document.createElement('span');
+                    noteFreqSpan.classList.add('note-freq');
+                    noteFreqSpan.textContent = noteInfo.displayFreq + ' Hz';
+
+                    if (noteInfo.isBlackKey) {
+                        const labelContainer = document.createElement('div');
+                        labelContainer.classList.add('black-key-label-container');
+                        labelContainer.appendChild(noteNameSpan);
+                        labelContainer.appendChild(noteFreqSpan);
+                        keyInner.appendChild(labelContainer);
+                        // Position black keys relative to previous white key
+                        const previousKey = piano.lastElementChild;
+                         if (previousKey && previousKey.querySelector('.white-key')) {
+                           keyInner.style.left = '-14px'; // Adjust based on white key width
+                         } else {
+                           // Special handling if the first key is black (unlikely in standard layout)
+                           keyInner.style.left = '0'; // Fallback
+                         }
+
+                    } else {
+                        keyInner.appendChild(noteNameSpan);
+                        keyInner.appendChild(noteFreqSpan);
+                         // Reset margin for white keys, black keys are positioned absolutely relative to them
+                        keyElement.style.marginLeft = '0px';
+                    }
+
+
+                    keyElement.appendChild(keyInner);
+                    piano.appendChild(keyElement);
+
+                    // Add event listeners for playing notes
+                    keyInner.addEventListener('mousedown', () => handleKeyPress(keyInner, noteInfo.frequency));
+                    keyInner.addEventListener('touchstart', (e) => {
+                       e.preventDefault(); // Prevent scrolling on key press
+                       handleKeyPress(keyInner, noteInfo.frequency);
+                    });
+                 });
+
+                 // Adjust piano width based on number of white keys
+                 const whiteKeyCount = notesToDisplay.filter(n => !n.isBlackKey).length;
+                 const approxPianoWidth = whiteKeyCount * 41; // 40px width + 1px margin
+                 piano.style.width = `${approxPianoWidth}px`;
+
+                 // Optional: Scroll to Middle C if visible
+                 const middleCKey = piano.querySelector('.key[data-note="C4"]');
+                 if (middleCKey) {
+                     // Check if middle C is within the rendered range
+                     const middleCData = allNotes.find(n => n.note === "C4");
+                     if (middleCData) {
+                         const middleCOctave = parseInt(middleCData.note.replace(/[A-G#b/]+/, ''));
+                         if (middleCOctave >= startOctave && middleCOctave <= endOctave) {
+                             // Scroll into view logic (optional, can be complex)
+                             // middleCKey.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                             console.log("Middle C is within the current range.");
+                         }
+                     }
+                 }
+            }
+             // --- END RENDER PIANO FUNCTION ---
+
+
+             // Initial Render
+             renderPiano();
+
+
+            // Handle octave range changes
+            function handleOctaveChange() {
+                const startOctave = parseInt(startOctaveSelect.value);
+                const endOctave = parseInt(endOctaveSelect.value);
+
+                // Ensure end octave is not less than start octave
+                if (endOctave < startOctave) {
+                    if (this === startOctaveSelect) {
+                        endOctaveSelect.value = startOctave;
+                    } else {
+                        startOctaveSelect.value = endOctave;
+                    }
+                }
+
+                renderPiano(); // Re-render the piano with the new octave range
+            }
+
+            startOctaveSelect.addEventListener('change', handleOctaveChange);
+            endOctaveSelect.addEventListener('change', handleOctaveChange);
+
+            // Sound type change
+            const soundTypeSelect = document.getElementById('sound-type');
+            soundTypeSelect.addEventListener('change', function() {
+                soundType = this.value;
+            });
+
+            // Audio toggle functionality
+            let audioEnabled = false;
+            // const pianoElement = document.getElementById('piano-keyboard'); // Already defined above
+
+            document.getElementById('audio-toggle').addEventListener('click', function() {
+                audioEnabled = !audioEnabled;
+
+                if (audioEnabled) {
+                    // Turn audio on
+                    if (!audioContext) {
+                        try {
+                            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                            // Create Master Gain Node only once
+                            masterGainNode = audioContext.createGain();
+                            masterGainNode.gain.value = parseFloat(volumeSlider.value); // Set initial volume
+                            masterGainNode.connect(audioContext.destination); // Connect master gain to output
+                        } catch (e) {
+                            console.error("WebAudio API not supported:", e);
+                            alert("Sorry, Web Audio API is not supported in your browser.");
+                            audioEnabled = false;
+                            return;
+                        }
+                    } else if (!masterGainNode) {
+                         // Safety check: Create masterGainNode if context exists but node doesn't
+                         masterGainNode = audioContext.createGain();
+                         masterGainNode.gain.value = parseFloat(volumeSlider.value);
+                         masterGainNode.connect(audioContext.destination);
+                    }
+                     // Resume context if suspended (e.g., by browser autoplay policy)
+                    if (audioContext.state === 'suspended') {
+                         audioContext.resume().then(() => {
+                              console.log("AudioContext resumed successfully.");
+                         }).catch(e => {
+                              console.error("Failed to resume AudioContext:", e);
+                              // Optionally inform the user they might need to interact again
+                         });
+                    }
+
+
+                    this.textContent = 'Audio On';
+                    this.classList.remove('audio-off');
+                    this.classList.add('audio-on');
+                } else {
+                    // Turn audio off
+                    this.textContent = 'Audio Off';
+                    this.classList.remove('audio-on');
+                    this.classList.add('audio-off');
+
+                    // Stop any playing notes immediately
+                    Object.keys(activeOscillators).forEach(freq => {
+                        stopNote(freq, true); // Force stop immediately
+                    });
+
+                    // Optional: Suspend context to save resources
+                    // if (audioContext && audioContext.state === 'running') {
+                    //     audioContext.suspend();
+                    // }
+                }
+            });
+
+            // Key press visualization and sound trigger
+             function handleKeyPress(keyElement, frequency) {
+                 if (!audioEnabled) return; // Don't play if audio is off
+
+                 keyElement.classList.add('active');
+                 playNote(frequency);
+
+                 // Remove active class after a short delay for visual feedback
+                 // This doesn't affect the sound duration (controlled by sustain)
+                 setTimeout(() => {
+                      keyElement.classList.remove('active');
+                 }, 200); // Visual feedback duration
+             }
+
+
+            // Play a note
+            function playNote(frequency) {
+                if (!audioContext || !audioEnabled || !masterGainNode || audioContext.state !== 'running') {
+                   console.log("Audio not ready or enabled.");
+                   // Attempt to resume context if user interaction triggered this
+                   if (audioContext && audioContext.state === 'suspended') {
+                       audioContext.resume();
+                   }
+                   return; // Exit if context is not running or masterGainNode missing
+                }
+
+                // Stop any previous instance of this *exact* note to avoid overlap if retriggered quickly
+                if (activeOscillators[frequency]) {
+                   stopNote(frequency, true); // Force immediate stop before starting new one
+                }
+
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                let vibratoOsc = null; // Declare here for scope access
+
+                oscillator.type = soundType; // Use selected sound type
+                oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+
+
+                // Add vibrato if enabled
+                if (vibratoEnabled) {
+                    vibratoOsc = audioContext.createOscillator();
+                    const vibratoGain = audioContext.createGain();
+
+                    vibratoOsc.type = 'sine';
+                    vibratoOsc.frequency.value = 6.0; // Vibrato rate (Hz)
+                    // Adjust vibrato depth based on frequency (subtler for lower notes)
+                    const vibratoDepth = Math.max(1, frequency * 0.005); // Min depth of 1 Hz, adjust multiplier as needed
+                    vibratoGain.gain.value = vibratoDepth;
+
+                    vibratoOsc.connect(vibratoGain);
+                    vibratoGain.connect(oscillator.frequency); // Modulate the main oscillator's frequency
+                    vibratoOsc.start(audioContext.currentTime);
+                }
+
+                // Simple ADSR-like Envelope (Attack, Decay, Sustain level, Release=Sustain Duration)
+                // Note: Volume levels are relative now, masterGainNode controls overall output
+                const attackTime = 0.01;
+                const decayTime = 0.1; // Short decay to a sustain level
+                const sustainLevel = 0.7; // Sustain level (relative) - REVERTED TO 0.7
+
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(1.0, audioContext.currentTime + attackTime); // Quick attack to full relative volume - REVERTED TO 1.0
+                gainNode.gain.linearRampToValueAtTime(sustainLevel, audioContext.currentTime + attackTime + decayTime); // Decay to sustain level
+
+                // Hold sustain level, then release using sustainDuration for the fade-out
+                gainNode.gain.setValueAtTime(sustainLevel, audioContext.currentTime + attackTime + decayTime); // Ensure sustain level is held before release starts
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + sustainDuration); // Fade out over sustainDuration
+
+
+                oscillator.connect(gainNode);
+                gainNode.connect(masterGainNode); // Connect individual note gain to MASTER gain
+
+                oscillator.start(audioContext.currentTime);
+
+                 // Schedule the oscillator and vibrato (if used) to stop *after* the gain envelope finishes
+                 const stopTime = audioContext.currentTime + sustainDuration + 0.1; // Add buffer
+                 oscillator.stop(stopTime);
+                 if (vibratoOsc) {
+                     vibratoOsc.stop(stopTime);
+                 }
+
+                // Store references for potential early stop (e.g., if audio is toggled off)
+                activeOscillators[frequency] = {
+                    oscillator: oscillator,
+                    gainNode: gainNode, // Keep gainNode reference for immediate stop
+                    vibratoOsc: vibratoOsc,
+                    stopTimeout: setTimeout(() => { // Clean up reference after sound naturally stops
+                       stopNote(frequency, false); // Don't force if it finished naturally
+                    }, sustainDuration * 1000 + 150) // Timeout slightly after expected end
+                };
+            }
+
+             // Stop a note (either naturally or forced)
+             function stopNote(frequency, force = false) {
+                 if (activeOscillators[frequency]) {
+                     const nodeRefs = activeOscillators[frequency];
+                     clearTimeout(nodeRefs.stopTimeout); // Clear the cleanup timeout
+
+                     if (force && audioContext && audioContext.state === 'running') {
+                         // Force immediate stop by ramping gain down quickly
+                         try {
+                            // Cancel scheduled ramps and set value low immediately
+                            nodeRefs.gainNode.gain.cancelScheduledValues(audioContext.currentTime);
+                            nodeRefs.gainNode.gain.setValueAtTime(nodeRefs.gainNode.gain.value, audioContext.currentTime); // Hold current value
+                            nodeRefs.gainNode.gain.linearRampToValueAtTime(0.0001, audioContext.currentTime + 0.05); // Quick fade out
+
+
+                             // Schedule oscillator stop shortly after gain reaches near zero
+                             const forcedStopTime = audioContext.currentTime + 0.1;
+                             nodeRefs.oscillator.stop(forcedStopTime);
+                             if (nodeRefs.vibratoOsc) {
+                                 nodeRefs.vibratoOsc.stop(forcedStopTime);
+                             }
+
+                             // Clean up references after forced stop
+                              setTimeout(() => {
+                                 if (activeOscillators[frequency]) { // Check if still exists
+                                     try {
+                                         nodeRefs.oscillator.disconnect();
+                                         nodeRefs.gainNode.disconnect();
+                                         if (nodeRefs.vibratoOsc) {
+                                             nodeRefs.vibratoOsc.disconnect();
+                                         }
+                                     } catch (e) { /* Ignore errors if already disconnected */ }
+                                     delete activeOscillators[frequency];
+                                 }
+                              }, 150); // Delay cleanup slightly
+
+
+                         } catch (e) {
+                             console.warn("Error during forced stop:", e);
+                              // Fallback cleanup if error occurs
+                              try {
+                                 nodeRefs.oscillator.disconnect();
+                                 nodeRefs.gainNode.disconnect();
+                                  if (nodeRefs.vibratoOsc) nodeRefs.vibratoOsc.disconnect();
+                              } catch (e2) {}
+                               delete activeOscillators[frequency]; // Ensure cleanup
+                         }
+
+                     } else if (!force) {
+                         // Natural stop: just clean up the reference
+                         try {
+                              // Disconnect nodes only if they haven't been stopped and disconnected yet
+                              // Checking oscillator playbackState might be useful but complex
+                              // Assuming they finished naturally based on the timeout triggering
+                              nodeRefs.oscillator.disconnect();
+                              nodeRefs.gainNode.disconnect();
+                               if (nodeRefs.vibratoOsc) {
+                                   nodeRefs.vibratoOsc.disconnect();
+                               }
+                         } catch(e) {
+                              // console.log("Nodes likely already disconnected naturally.");
+                         }
+                          delete activeOscillators[frequency];
+                     }
+
+                 }
+             }
+
+        }); // End DOMContentLoaded
+    </script>
+</body>
+</html>
