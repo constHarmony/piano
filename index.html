@@ -339,28 +339,16 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Sound control variables
             let soundType = 'square';
-            let vibratoEnabled = true; // Changed default to true
-            let sustainDuration = 1.5;
+            let vibratoEnabled = false;
+            let sustainDuration = 1.0; // Default sustain in seconds
+            let masterVolume = 0.5; // Default master volume (0 to 1)
+            let lastTouchEventTime = 0; // Track touch end time to prevent ghost clicks
+            let isTouchInteraction = false; // Flag to prevent mousedown after touch
 
             // Initialize audio context and master gain
             let audioContext = null;
             let masterGainNode = null;
             let activeOscillators = {}; // Store active oscillators
-            let isMouseDown = false; // Track mouse button state for dragging
-            let lastTouchedKey = null; // Track last key played during touch drag
-            let lastTouchEventTime = 0; // Track time of last touch end to prevent ghost clicks
-
-            // --- Setup Mouse Down/Up Tracking for Dragging ---
-            document.body.addEventListener('mousedown', () => {
-                isMouseDown = true;
-            });
-            document.body.addEventListener('mouseup', () => {
-                isMouseDown = false;
-            });
-             // Handle cases where mouse leaves the window while pressed
-            document.body.addEventListener('mouseleave', () => {
-                 isMouseDown = false;
-            });
 
             // Handle vibrato checkbox
             document.getElementById('vibrato').addEventListener('change', function() {
@@ -526,30 +514,16 @@
 
                     // Add event listeners for playing notes
                     keyInner.addEventListener('mousedown', () => {
+                        if (isTouchInteraction) return; // Prevent action if touch is active
                         if (Date.now() - lastTouchEventTime < 500) return; // Prevent ghost clicks
                         handleKeyPress(keyInner, noteInfo.frequency); // Use frequency from current noteInfo
                     });
                     keyInner.addEventListener('touchstart', (e) => {
+                       isTouchInteraction = true; // Set touch flag
+                       // No preventDefault needed here, allows scrolling
                        handleKeyPress(keyInner, noteInfo.frequency); // Use frequency from current noteInfo
-                       lastTouchedKey = keyInner;
-                    });
-                    keyInner.addEventListener('mouseover', () => {
-                        if (isMouseDown) {
-                            handleKeyPress(keyInner, noteInfo.frequency); // Use frequency from current noteInfo
-                        }
                     });
                  });
-
-                 // Add touchmove listener to the piano container AFTER keys are rendered
-                 const pianoContainer = document.getElementById('piano-keyboard');
-                 pianoContainer.removeEventListener('touchmove', handleTouchMove);
-                 pianoContainer.addEventListener('touchmove', handleTouchMove);
-
-                 // Clear last touched key when touch ends
-                 pianoContainer.removeEventListener('touchend', handleTouchEnd);
-                 pianoContainer.addEventListener('touchend', handleTouchEnd);
-                 pianoContainer.removeEventListener('touchcancel', handleTouchEnd);
-                 pianoContainer.addEventListener('touchcancel', handleTouchEnd);
 
                  // Adjust piano width based on number of white keys
                  const whiteKeyCount = notesToDisplay.filter(n => !n.isBlackKey).length;
@@ -581,6 +555,13 @@
             }
              // --- END RENDER PIANO FUNCTION ---
 
+
+             // Event listeners to track mouse state globally (if needed for mouseleave logic)
+             // If not needed elsewhere, these can be removed, and the mouseleave check simplified/removed.
+             // let isMouseDown = false; // Defined earlier if kept
+             // document.addEventListener('mousedown', () => { isMouseDown = true; });
+             // document.addEventListener('mouseup', () => { isMouseDown = false; });
+             // document.addEventListener('mouseleave', () => { isMouseDown = false; }); // Also reset if mouse leaves window
 
              // Initial Render
              renderPiano();
@@ -813,34 +794,13 @@
                  }
              }
 
-             // --- TOUCH DRAG HANDLING ---
-             function handleTouchMove(e) {
-                // e.preventDefault(); // REMOVED: This was preventing horizontal scrolling
-                if (e.touches.length > 0) {
-                    const touch = e.touches[0];
-                    const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
-
-                    if (elementUnderTouch) {
-                        // Find the actual key element (could be label or inner div)
-                        const keyInner = elementUnderTouch.closest('.white-key, .black-key');
-
-                        if (keyInner && keyInner !== lastTouchedKey) {
-                            const freq = parseFloat(keyInner.closest('.key').dataset.freq);
-                            if (freq && !isNaN(freq)) {
-                                handleKeyPress(keyInner, freq);
-                                lastTouchedKey = keyInner; // Update last touched key
-                            }
-                        }
-                    }
-                }
-             }
-
              function handleTouchEnd(e) {
-                 lastTouchedKey = null; // Reset last touched key when touch ends
                  lastTouchEventTime = Date.now(); // Record time to prevent ghost clicks
+                 // Reset touch flag after a short delay
+                 setTimeout(() => {
+                     isTouchInteraction = false;
+                 }, 100); // 100ms delay
              }
-
-             // --- END TOUCH DRAG HANDLING ---
         }); // End DOMContentLoaded
     </script>
 </body>
