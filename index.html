@@ -346,6 +346,7 @@
             let activeOscillators = {}; // Store active oscillators
             let isMouseDown = false; // Track mouse button state for dragging
             let lastTouchedKey = null; // Track last key played during touch drag
+            let lastTouchEventTime = 0; // Track time of last touch end to prevent ghost clicks
 
             // --- Setup Mouse Down/Up Tracking for Dragging ---
             document.body.addEventListener('mousedown', () => {
@@ -546,7 +547,14 @@
                     piano.appendChild(keyElement);
 
                     // Add event listeners for playing notes
-                    keyInner.addEventListener('mousedown', () => handleKeyPress(keyInner, noteInfo.frequency));
+                    keyInner.addEventListener('mousedown', () => {
+                        // Prevent ghost clicks immediately after touch ends
+                        if (Date.now() - lastTouchEventTime < 500) { // 500ms threshold
+                            // console.log("Ignoring potential ghost click"); // Optional logging
+                            return;
+                        }
+                        handleKeyPress(keyInner, noteInfo.frequency);
+                    });
                     keyInner.addEventListener('touchstart', (e) => {
                        // e.preventDefault(); // REMOVED: This was preventing horizontal scroll initiation
                        handleKeyPress(keyInner, noteInfo.frequency);
@@ -870,6 +878,7 @@
 
              function handleTouchEnd(e) {
                  lastTouchedKey = null; // Reset last touched key when touch ends
+                 lastTouchEventTime = Date.now(); // Record time to prevent ghost clicks
              }
 
              // --- END TOUCH DRAG HANDLING ---
