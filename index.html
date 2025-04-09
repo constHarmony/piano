@@ -391,30 +391,43 @@
             // Define all notes with their octaves
             const notesWithOctaves = ['A', 'A#/Bb', 'B', 'C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab'];
 
-            // Generate all piano notes with frequencies
+            // Generate all piano notes with frequencies (Rewritten for clarity and correctness)
             function generatePianoNotes() {
                 const notes = [];
-                const A4 = 440; // Base frequency for A4
+                const A4 = 440; // Base frequency for A4 (key 49 on an 88-key piano starting from A0)
+                const baseKeyOffset = 49; // Key number corresponding to A4
+                const firstKeyNoteIndex = 0; // Index of 'A' in notesWithOctaves
+                const firstKeyOctave = 0;
+                const firstMidiNote = 21; // MIDI note number for A0 (standard)
+                const totalMidiNotes = 108; // Range from A0 (21) to C8 (108) - Standard 88 keys. Extended Range goes higher. Let's recalculate based on a known range.
 
-                // Calculate for extended range (A0 to E10)
-                const totalKeys = 116; // Total keys from A0 to E10 (adjust if needed, original range might differ)
+                // Let's use MIDI note numbers for standard reference, A0=21, A4=69, C8=108
+                // Our piano seems to aim for A0 to E10? (116 keys?) Let's stick to the formula based on key index i.
+                // Assuming key `i=1` is A0.
+                const totalKeys = 116; // Use the original key count
 
                 for (let i = 1; i <= totalKeys; i++) {
-                    const noteIndex = (i - 1) % 12;
-                    const octave = Math.floor((i + 8) / 12);
-
-                    // Calculate frequency: A4 = 440Hz (key number 49)
+                    // Calculate frequency based on key index relative to A4 (key 49)
                     const frequency = A4 * Math.pow(2, (i - 49) / 12);
 
-                    // Format note name (adjusted logic for octaves 0 and 1)
+                    // Determine note name and octave based on key index i (assuming i=1 is A0)
                     let noteName;
-                    if (i <= 3) { // Handle A0, A#0, B0
-                       noteName = notesWithOctaves[noteIndex] + '0';
-                    } else { // Handle C1 onwards
-                       noteName = notesWithOctaves[(i - 4) % 12] + Math.floor((i + 8) / 12);
-                    }
+                    const noteIndexRaw = (i - 1); // 0-indexed from A0
+                    const octave = Math.floor(noteIndexRaw / 12) + firstKeyOctave; // Calculate octave relative to A0
+                    const noteInOctaveIndex = noteIndexRaw % 12; // Index within the 12 notes (A=0, A#=1, B=2...)
 
-                    // Format frequency display value with appropriate precision
+                    // Adjust mapping because our notesWithOctaves starts with A, matching the standard 0-index calculation
+                     noteName = notesWithOctaves[noteInOctaveIndex] + octave;
+
+                     // Previous Logic (kept for reference, but standard calculation above is clearer)
+                     // if (i <= 3) { // Handle A0, A#0, B0
+                     //    noteName = notesWithOctaves[(i - 1) % 12] + '0';
+                     // } else { // Handle C1 onwards
+                     //    noteName = notesWithOctaves[(i - 4) % 12] + Math.floor((i + 8) / 12);
+                     // }
+
+
+                    // Format frequency display value
                     let displayFreq;
                     if (frequency < 100) displayFreq = frequency.toFixed(3);
                     else if (frequency < 1000) displayFreq = frequency.toFixed(2);
@@ -430,14 +443,17 @@
                     });
                 }
 
-                // Ensure the first note is A0
-                if (notes.length > 0 && notes[0].note !== 'A0') {
-                    console.warn("Generated notes do not start exactly at A0 based on key numbering. Check calculation if precise range is critical.");
-                }
+                 // Optional: Verification check (e.g., find A4)
+                 const checkA4 = notes.find(n => n.keyNumber === 49);
+                 if (checkA4) {
+                     console.log(`Verification: Key 49 -> Note: ${checkA4.note}, Freq: ${checkA4.frequency.toFixed(3)}`); // Should log A4, 440.000
+                 } else {
+                     console.warn("Verification Failed: Could not find key 49 (A4) in generated notes.");
+                 }
+
 
                 return notes;
             }
-
 
             const allNotes = generatePianoNotes();
 
@@ -446,98 +462,80 @@
                  const piano = document.getElementById('piano-keyboard');
                  piano.innerHTML = ''; // Clear existing keys
 
-                 // Hardcode octave range 0-10
+                 // Hardcoded octave range 0-10 (as per previous changes)
                  const startOctave = 0;
                  const endOctave = 10;
 
-                 // Filter notes based on selected octaves
                  const notesToDisplay = allNotes.filter(note => {
-                     const octave = parseInt(note.note.replace(/[A-G#b/]+/, ''));
-                     // Include notes from C in start octave up to B in end octave
-                     // Adjust logic slightly: start from the first note of the start octave (e.g., C2)
-                     // End with the last note of the end octave (e.g., B5)
-                     // A more precise filter would be needed if exact C-to-B range per octave is strict
-                     return octave >= startOctave && octave <= endOctave;
-
-                     // More precise logic attempt (start from C of start octave, end B of end octave):
-                     // if (octave === startOctave && note.note.startsWith('C')) return true; // Start from C
-                     // if (octave > startOctave && octave < endOctave) return true; // Include middle octaves
-                     // if (octave === endOctave && !note.note.startsWith('C')) return true; // Include up to B
-                     // return false;
+                     const octaveNum = parseInt(note.note.replace(/[^0-9]/g, '')); // Extract octave number reliably
+                     return !isNaN(octaveNum) && octaveNum >= startOctave && octaveNum <= endOctave;
                  });
-
 
                  // Determine the exact start and end notes for display (optional, for info)
                  const startNoteInfo = notesToDisplay.length > 0 ? `${notesToDisplay[0].note} (${notesToDisplay[0].displayFreq} Hz)` : 'N/A';
                  const endNoteInfo = notesToDisplay.length > 0 ? `${notesToDisplay[notesToDisplay.length - 1].note} (${notesToDisplay[notesToDisplay.length - 1].displayFreq} Hz)` : 'N/A';
+                 // console.log(`Rendering notes from ${startNoteInfo} to ${endNoteInfo}`);
 
-                 // console.log(`Rendering notes from ${startNoteInfo} to ${endNoteInfo}`); // Log instead of display
-
-
-                 // Create and append key elements (simplified)
+                 // Create and append key elements (Rewritten label creation part for clarity)
                  notesToDisplay.forEach(noteInfo => {
+                    // console.log(`Rendering key: Note=${noteInfo.note}, Freq=${noteInfo.frequency}, DisplayFreq=${noteInfo.displayFreq}`); // DEBUG line if needed
+
                     const keyElement = document.createElement('div');
                     keyElement.classList.add('key');
-                    keyElement.dataset.note = noteInfo.note;
-                    keyElement.dataset.freq = noteInfo.frequency;
+                    keyElement.dataset.note = noteInfo.note; // Set data attribute for note name
+                    keyElement.dataset.freq = noteInfo.frequency; // Set data attribute for precise frequency
 
                     const keyInner = document.createElement('div');
                     keyInner.classList.add(noteInfo.isBlackKey ? 'black-key' : 'white-key');
 
-                    // Labels
+                    // --- Create Labels using the current noteInfo ---
                     const noteNameSpan = document.createElement('span');
                     noteNameSpan.classList.add('note-name');
-                    noteNameSpan.textContent = noteInfo.note;
+                    noteNameSpan.textContent = noteInfo.note; // Use note name from current noteInfo
 
                     const noteFreqSpan = document.createElement('span');
                     noteFreqSpan.classList.add('note-freq');
-                    noteFreqSpan.textContent = noteInfo.displayFreq + ' Hz';
+                    noteFreqSpan.textContent = noteInfo.displayFreq + ' Hz'; // Use display frequency from current noteInfo
+                    // --- End Label Creation ---
 
+                    // Append labels based on key type
                     if (noteInfo.isBlackKey) {
                         const labelContainer = document.createElement('div');
                         labelContainer.classList.add('black-key-label-container');
+                        // Append the correctly created spans to the container
                         labelContainer.appendChild(noteNameSpan);
                         labelContainer.appendChild(noteFreqSpan);
                         keyInner.appendChild(labelContainer);
-                        // Position black keys relative to previous white key
+
+                        // Position black keys relative to previous white key (logic seems okay)
                         const previousKey = piano.lastElementChild;
                          if (previousKey && previousKey.querySelector('.white-key')) {
-                           keyInner.style.left = '-14px'; // Adjust based on white key width
+                           keyInner.style.left = '-14px'; // Standard offset
                          } else {
-                           // Special handling if the first key is black (unlikely in standard layout)
-                           keyInner.style.left = '0'; // Fallback
+                           keyInner.style.left = '0'; // Fallback for unusual cases
                          }
-
                     } else {
+                        // Append the correctly created spans directly to the white key
                         keyInner.appendChild(noteNameSpan);
                         keyInner.appendChild(noteFreqSpan);
-                         // Reset margin for white keys, black keys are positioned absolutely relative to them
-                        keyElement.style.marginLeft = '0px';
+                        keyElement.style.marginLeft = '0px'; // Reset margin for white keys
                     }
-
 
                     keyElement.appendChild(keyInner);
                     piano.appendChild(keyElement);
 
                     // Add event listeners for playing notes
                     keyInner.addEventListener('mousedown', () => {
-                        // Prevent ghost clicks immediately after touch ends
-                        if (Date.now() - lastTouchEventTime < 500) { // 500ms threshold
-                            // console.log("Ignoring potential ghost click"); // Optional logging
-                            return;
-                        }
-                        handleKeyPress(keyInner, noteInfo.frequency);
+                        if (Date.now() - lastTouchEventTime < 500) return; // Prevent ghost clicks
+                        handleKeyPress(keyInner, noteInfo.frequency); // Use frequency from current noteInfo
                     });
                     keyInner.addEventListener('touchstart', (e) => {
-                       // e.preventDefault(); // REMOVED: This was preventing horizontal scroll initiation
-                       handleKeyPress(keyInner, noteInfo.frequency);
-                       lastTouchedKey = keyInner; // Set initial touched key
+                       handleKeyPress(keyInner, noteInfo.frequency); // Use frequency from current noteInfo
+                       lastTouchedKey = keyInner;
                     });
-
-                    // Add mouseover listener for drag-play
                     keyInner.addEventListener('mouseover', () => {
-                        if (isMouseDown) { // Only play if mouse button is held down
-                            handleKeyPress(keyInner, noteInfo.frequency);
+                        if (isMouseDown) {
+                            handleKeyPress(keyInner, noteInfo.frequency); // Use frequency from current noteInfo
                         }
                     });
                  });
