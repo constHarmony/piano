@@ -187,6 +187,18 @@
             font-size: 9px;
         }
 
+        /* New styles for frequency value and unit */
+        .note-freq-value,
+        .note-freq-unit {
+            font-size: 9px;
+            line-height: 1; /* Adjust line height if needed */
+            user-select: none;
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE 10+ */
+            color: #333; /* Match white key text color */
+        }
+
         /* Add user-select none to prevent highlighting */
         .note-name, .note-freq {
             user-select: none;
@@ -376,44 +388,35 @@
                 }
             });
 
-            // Define all notes with their octaves
-            const notesWithOctaves = ['A', 'A#/Bb', 'B', 'C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab'];
+            // Define standard note names starting from C for MIDI mapping
+            const standardNoteNames = ['C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab', 'A', 'A#/Bb', 'B'];
 
-            // Generate all piano notes with frequencies (Rewritten for clarity and correctness)
+            // Generate all piano notes with frequencies using standard octave numbering
             function generatePianoNotes() {
                 const notes = [];
                 const A4 = 440; // Base frequency for A4 (key 49 on an 88-key piano starting from A0)
-                const baseKeyOffset = 49; // Key number corresponding to A4
-                const firstKeyNoteIndex = 0; // Index of 'A' in notesWithOctaves
-                const firstKeyOctave = 0;
-                const firstMidiNote = 21; // MIDI note number for A0 (standard)
-                const totalMidiNotes = 108; // Range from A0 (21) to C8 (108) - Standard 88 keys. Extended Range goes higher. Let's recalculate based on a known range.
+                const midiA4 = 69; // MIDI note number for A4
+                const keyA0 = 1; // Our key index starts at 1 for A0
+                const midiA0 = 21; // MIDI note number for A0
 
-                // Let's use MIDI note numbers for standard reference, A0=21, A4=69, C8=108
-                // Our piano seems to aim for A0 to E10? (116 keys?) Let's stick to the formula based on key index i.
-                // Assuming key `i=1` is A0.
-                const totalKeys = 116; // Use the original key count
+                // Assuming the original 116 keys represent a range starting from A0
+                const totalKeys = 116; // As originally defined
 
                 for (let i = 1; i <= totalKeys; i++) {
                     // Calculate frequency based on key index relative to A4 (key 49)
+                    // This calculation remains the same as it's based on equal temperament
                     const frequency = A4 * Math.pow(2, (i - 49) / 12);
 
-                    // Determine note name and octave based on key index i (assuming i=1 is A0)
-                    let noteName;
-                    const noteIndexRaw = (i - 1); // 0-indexed from A0
-                    const octave = Math.floor(noteIndexRaw / 12) + firstKeyOctave; // Calculate octave relative to A0
-                    const noteInOctaveIndex = noteIndexRaw % 12; // Index within the 12 notes (A=0, A#=1, B=2...)
+                    // Determine note name and octave using MIDI standard
+                    const midiNote = i + (midiA0 - keyA0); // Calculate MIDI note number (A0=21, A#0=22, B0=23, C1=24...)
 
-                    // Adjust mapping because our notesWithOctaves starts with A, matching the standard 0-index calculation
-                     noteName = notesWithOctaves[noteInOctaveIndex] + octave;
+                    // Calculate octave based on MIDI standard (C starts the octave)
+                    const octave = Math.floor(midiNote / 12) - 1; // MIDI note 0 is C-1, MIDI 12 is C0, MIDI 24 is C1...
 
-                     // Previous Logic (kept for reference, but standard calculation above is clearer)
-                     // if (i <= 3) { // Handle A0, A#0, B0
-                     //    noteName = notesWithOctaves[(i - 1) % 12] + '0';
-                     // } else { // Handle C1 onwards
-                     //    noteName = notesWithOctaves[(i - 4) % 12] + Math.floor((i + 8) / 12);
-                     // }
-
+                    // Calculate note name within the octave
+                    const noteIndex = midiNote % 12;
+                    const noteBaseName = standardNoteNames[noteIndex];
+                    const noteName = noteBaseName + octave;
 
                     // Format frequency display value
                     let displayFreq;
@@ -422,23 +425,32 @@
                     else if (frequency < 10000) displayFreq = frequency.toFixed(1);
                     else displayFreq = frequency.toFixed(0);
 
+                    // Determine if it's a black key based on the base name
+                    const isBlackKey = noteBaseName.includes('#') || noteBaseName.includes('b');
+
                     notes.push({
-                        keyNumber: i,
+                        keyNumber: i, // Keep original key index if needed elsewhere
+                        midiNote: midiNote, // Store MIDI note number
                         note: noteName,
                         frequency: frequency,
                         displayFreq: displayFreq,
-                        isBlackKey: noteName.includes('#') || noteName.includes('b')
+                        isBlackKey: isBlackKey
                     });
                 }
 
-                 // Optional: Verification check (e.g., find A4)
-                 const checkA4 = notes.find(n => n.keyNumber === 49);
+                 // Optional: Verification checks
+                 const checkA4 = notes.find(n => n.keyNumber === 49); // Key 49 should still be A4
                  if (checkA4) {
-                     console.log(`Verification: Key 49 -> Note: ${checkA4.note}, Freq: ${checkA4.frequency.toFixed(3)}`); // Should log A4, 440.000
+                     console.log(`Verification: Key 49 -> MIDI: ${checkA4.midiNote}, Note: ${checkA4.note}, Freq: ${checkA4.frequency.toFixed(3)}`); // Should log MIDI 69, A4, 440.000
                  } else {
-                     console.warn("Verification Failed: Could not find key 49 (A4) in generated notes.");
+                     console.warn("Verification Failed: Could not find key 49 in generated notes.");
                  }
-
+                 const checkC4 = notes.find(n => n.note === 'C4'); // Find Middle C (C4)
+                 if (checkC4) {
+                    console.log(`Verification: Note C4 -> Key: ${checkC4.keyNumber}, MIDI: ${checkC4.midiNote}, Freq: ${checkC4.frequency.toFixed(3)}`); // Should log Key 40, MIDI 60, 261.626
+                 } else {
+                     console.warn("Verification Failed: Could not find note C4 in generated notes.");
+                 }
 
                 return notes;
             }
@@ -481,9 +493,14 @@
                     noteNameSpan.classList.add('note-name');
                     noteNameSpan.textContent = noteInfo.note; // Use note name from current noteInfo
 
-                    const noteFreqSpan = document.createElement('span');
-                    noteFreqSpan.classList.add('note-freq');
-                    noteFreqSpan.textContent = noteInfo.displayFreq + ' Hz'; // Use display frequency from current noteInfo
+                    // Create separate spans for frequency value and unit
+                    const noteFreqValueSpan = document.createElement('span');
+                    noteFreqValueSpan.classList.add('note-freq-value');
+                    noteFreqValueSpan.textContent = noteInfo.displayFreq; // Only the number
+
+                    const noteFreqUnitSpan = document.createElement('span');
+                    noteFreqUnitSpan.classList.add('note-freq-unit');
+                    noteFreqUnitSpan.textContent = 'Hz'; // Only the unit
                     // --- End Label Creation ---
 
                     // Append labels based on key type
@@ -492,7 +509,13 @@
                         labelContainer.classList.add('black-key-label-container');
                         // Append the correctly created spans to the container
                         labelContainer.appendChild(noteNameSpan);
-                        labelContainer.appendChild(noteFreqSpan);
+                        // For black keys, we might still want freq and unit together for space
+                        // Re-creating the original combined span for black keys only
+                        const blackNoteFreqSpan = document.createElement('span');
+                        blackNoteFreqSpan.classList.add('note-freq');
+                        blackNoteFreqSpan.textContent = noteInfo.displayFreq + ' Hz';
+                        labelContainer.appendChild(blackNoteFreqSpan);
+
                         keyInner.appendChild(labelContainer);
 
                         // Position black keys relative to previous white key (logic seems okay)
@@ -503,9 +526,10 @@
                            keyInner.style.left = '0'; // Fallback for unusual cases
                          }
                     } else {
-                        // Append the correctly created spans directly to the white key
+                        // White keys: Append the three separate spans directly
                         keyInner.appendChild(noteNameSpan);
-                        keyInner.appendChild(noteFreqSpan);
+                        keyInner.appendChild(noteFreqValueSpan);
+                        keyInner.appendChild(noteFreqUnitSpan);
                         keyElement.style.marginLeft = '0px'; // Reset margin for white keys
                     }
 
