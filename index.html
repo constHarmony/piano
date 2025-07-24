@@ -309,9 +309,9 @@
             <div class="control-group">
                 <label for="sound-type">Sound Type:</label>
                 <select id="sound-type">
+                    <option value="sine" selected>Sine Wave</option>
                     <option value="square">Square Wave</option>
                     <option value="triangle">Triangle Wave</option>
-                    <option value="sine">Sine Wave</option>
                 </select>
             </div>
 
@@ -350,7 +350,7 @@
         // Main piano keyboard functionality
         document.addEventListener('DOMContentLoaded', function() {
             // Sound control variables
-            let soundType = 'square';
+            let soundType = 'sine';
             let vibratoEnabled = false;
             let sustainDuration = 1.0; // Default sustain in seconds
             let masterVolume = 0.1; // Default master volume (0 to 1)
